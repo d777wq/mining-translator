@@ -6,15 +6,15 @@
 <meta name="theme-color" content="#101827">
 <title>矿山三语实时翻译助手</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=052">
+<link rel="stylesheet" href="./styles.css?v=060">
 </head>
 <body>
 <header>
   <div>
     <h1>矿山三语实时翻译助手</h1>
-    <p>V0.5.2 · 手机独立单路径版 · 中文 / Español / English</p>
+    <p>V0.6 · 手机独立云端免费版 · 中文 / Español / English</p>
   </div>
-  <span id="modeBadge">FREE · MOBILE</span>
+  <span id="modeBadge">FREE · FAST</span>
 </header>
 
 <main>
@@ -35,10 +35,10 @@
         <option value="off">关闭</option>
       </select>
     </label>
-    <label>分段速度
+    <label>分段
       <select id="silenceDelay">
-        <option value="550">很快</option>
-        <option value="750" selected>快速</option>
+        <option value="500">很快</option>
+        <option value="700" selected>快速</option>
         <option value="1000">稳妥</option>
         <option value="1400">长停顿</option>
       </select>
@@ -46,26 +46,22 @@
   </div>
 </section>
 
-<section class="engine">
+<section class="connect">
   <div>
-    <b id="engineStatus">模型尚未加载</b>
-    <p id="progressText">V0.5.2 只加载一种识别模型：Safari/WebGPU 用 Whisper Base；不兼容时一键刷新进入轻量兼容模式，避免内存叠加导致初始化失败。</p>
-    <div class="bar"><span id="bar"></span></div>
+    <b id="engineStatus">尚未连接免费 AI 服务</b>
+    <p id="engineHelp">V0.6 不在手机里加载 Whisper，因此不会再出现“模型 100% 后初始化失败”。</p>
   </div>
-  <button id="loadModels">⚡ 初始化手机增强模型</button>
+  <button id="configBtn">⚙️ 配置免费服务</button>
 </section>
 
-<section class="deviceInfo">
-  <span id="gpuStatus">检测硬件加速中…</span>
-  <span id="modelStatus">识别模型：待定</span>
-</section>
-<section class="modePanel">
-  <div>
-    <b>运行模式</b>
-    <span id="runModeText">自动选择</span>
+<section id="configPanel" class="configPanel hidden">
+  <p>把你部署后的 Cloudflare Worker 地址粘贴到这里，例如：</p>
+  <code>https://mining-translator-ai.你的账号.workers.dev</code>
+  <input id="workerUrl" type="url" placeholder="https://xxxx.workers.dev">
+  <div class="configActions">
+    <button id="saveWorker">保存并测试</button>
+    <button id="closeConfig">关闭</button>
   </div>
-  <button id="switchLite" class="secondary hidden">切换兼容模式</button>
-  <button id="switchFast" class="secondary hidden">切换高精度模式</button>
 </section>
 
 <section class="liveStatus">
@@ -76,7 +72,7 @@
 <section class="columns">
   <article id="card-zh">
     <div class="head"><span>🇨🇳 中文</span><small id="tag-zh">译文</small></div>
-    <div id="zh" class="text">初始化后点一次“开始连续翻译”，会议中无需逐句操作。</div>
+    <div id="zh" class="text">连接免费 AI 服务后，点一次开始连续翻译。</div>
   </article>
   <article id="card-es">
     <div class="head"><span>🇵🇪 Español</span><small id="tag-es">Traducción</small></div>
@@ -90,30 +86,27 @@
 
 <section class="actions">
   <button id="talk" disabled>🎙 开始连续翻译</button>
-  <button id="translateText">⌨️ 文字测试</button>
   <button id="clear">清空当前</button>
-</section>
-
-<section id="textPanel" class="textPanel hidden">
-  <textarea id="manualText" placeholder="输入中文、西班牙语或英语，测试三语翻译……"></textarea>
-  <button id="runText">翻译</button>
 </section>
 
 <section class="history">
   <div class="sectionHead">
     <h2>三语会议记录</h2>
-    <div><button id="copy">复制全部</button><button id="clearHistory">清空记录</button></div>
+    <div>
+      <button id="copy">复制全部</button>
+      <button id="clearHistory">清空记录</button>
+    </div>
   </div>
-  <div id="history"><p class="muted">每个语音片段识别后会自动加入这里。</p></div>
+  <div id="history"><p class="muted">识别后的每个片段会自动保存在这里。</p></div>
 </section>
 
 <section class="tips">
-  <b>V0.5.2 优化重点</b>
-  <p>单路径加载：高精度模式只加载 Whisper Base GPU；兼容模式只加载 Whisper Tiny WASM。两种模式绝不在同一页面连续加载，降低 iPhone 内存压力。</p>
+  <b>V0.6 工作方式</b>
+  <p>手机只负责录音和显示；Whisper Large V3 Turbo 与翻译模型运行在 Cloudflare Workers AI。无需在 iPhone 初始化本地模型。需要联网，但不需要电脑，也不需要 OpenAI API Key。</p>
 </section>
 </main>
 
 <div id="toast"></div>
-<script type="module" src="./app.js?v=052"></script>
+<script src="./app.js?v=060"></script>
 </body>
 </html>

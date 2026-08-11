@@ -1,7 +1,7 @@
 {
   "name": "矿山三语实时翻译助手",
   "short_name": "矿山三语翻译",
-  "description": "全免费手机独立中英西三语连续翻译助手",
+  "description": "手机独立中英西三语连续翻译助手",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eef1f5",

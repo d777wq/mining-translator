@@ -1,26 +1,63 @@
-# 矿山三语实时翻译助手 V0.5.2 FREE — 手机独立单路径版
+# 矿山三语实时翻译助手 V0.6 FREE
 
-## 这版专门解决 V0.5.1 的 iPhone 初始化失败
+## 为什么做 V0.6
+V0.5.x 在部分 iPhone Safari 上会出现模型文件已经下载 100%，但 ONNX/WebGPU/WASM 推理会话仍无法创建的问题。
+V0.6 不再把 Whisper 模型装进手机浏览器。
 
-旧逻辑：
-Base WebGPU 失败 → Base WASM → Tiny WASM
-这会导致前面失败的模型可能仍占用内存，最后 Tiny 下载到 100% 也创建失败。
+## 架构
+手机 GitHub Pages
+→ 录制 1~7 秒语音片段
+→ Cloudflare Worker
+→ Whisper Large V3 Turbo 自动语音识别
+→ M2M100 中/西/英直接翻译
+→ 手机三栏显示
+→ 手机系统 TTS 朗读
 
-V0.5.2 改为：
-- 正常高精度模式：只加载 Whisper Base + WebGPU
-- 兼容模式：只加载 Whisper Tiny + WASM
-- 同一页面绝不连续加载多个 ASR 模型
-- 高精度失败时出现“切换兼容模式”按钮
-- 点击按钮后整页刷新，释放旧页面内存，再干净地加载 Tiny
-- 检测微信等内嵌浏览器时，默认直接进入兼容模式
-- 连续识别时会用上一段语言作为下一段 Whisper language hint，提高连续中文的识别稳定性
+手机不需要电脑，也不需要 OpenAI API Key。
 
-## 更新 GitHub
-把解压后的全部文件覆盖上传到原 mining-translator 仓库根目录，Commit changes。
-等待 GitHub Pages 自动部署。
-重新打开后顶部应显示 V0.5.2。
+## 费用
+Cloudflare Workers AI Free 计划提供每日免费额度。
+这是“免费额度方案”，不是无限量永久免费算力；免费额度用完后请求会失败，不会在 Free 计划自动产生超额收费。
 
-## 推荐
-- iPhone 最好使用 Safari
-- 若高精度模式初始化失败，点“切换兼容模式”
-- 兼容模式速度快、占内存低；中文准确率不如 Base，但稳定性更高
+## 第一步：更新 GitHub Pages
+把根目录这些文件覆盖上传到原 mining-translator 仓库：
+- index.html
+- app.js
+- styles.css
+- sw.js
+- manifest.webmanifest
+
+Commit 后等待 GitHub Pages 更新。
+
+## 第二步：部署 Cloudflare Worker
+推荐电脑安装 Node.js 后操作：
+
+1. 注册/登录 Cloudflare。
+2. 解压本包，进入 `worker` 文件夹。
+3. 命令行：
+   npm install
+   npx wrangler login
+   npm run deploy
+4. Wrangler 会创建 Worker 并配置 `AI` binding。
+5. 部署后会显示类似：
+   https://mining-translator-ai.xxxxx.workers.dev
+
+如果 Cloudflare Dashboard 要求确认 Workers AI，请按页面提示启用 Free plan。
+
+## 第三步：手机连接
+打开：
+https://d777wq.github.io/mining-translator/
+
+点：
+“配置免费服务”
+
+粘贴：
+https://mining-translator-ai.xxxxx.workers.dev
+
+点“保存并测试”。
+
+以后网址保存在手机 localStorage，不需要每次填写。
+
+## 隐私提醒
+V0.6 的音频片段会发送到 Cloudflare Workers AI 进行识别和翻译，因此不再是纯本地离线模式。
+不要用于禁止上传到外部云服务的保密会议，除非公司政策允许。
