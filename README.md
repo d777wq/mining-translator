@@ -1,21 +1,36 @@
-# 矿山三语实时翻译助手 V0.4.1 FREE — iPhone兼容修正版
+# 矿山三语实时翻译助手 V0.5 FREE — 手机独立增强版
 
-## 修复内容
-- 不再在页面打开时直接导入 Transformers.js。
-- 点击“初始化免费模型”后才动态加载 AI 引擎。
-- iPhone 先只加载 Whisper Tiny；翻译模型按语言需要再下载，降低内存压力。
-- 使用独立缓存版本 V041，避免 Safari/GitHub Pages 一直读取旧 app.js。
-- 初始化失败时会把具体错误直接显示在页面上。
-- 仍然不需要 OpenAI API Key，也没有 API 调用费用。
+## 本版目标
+优先解决两个问题：
+1. 手机版翻译/识别延迟较大
+2. 中文语音识别不够准确
 
-## 更新 GitHub
-把本压缩包解压后，将以下文件覆盖上传到原仓库根目录：
-- index.html
-- app.js
-- sw.js
-- README.md
+## 核心变化
+- 自动检测 WebGPU；支持时用 GPU 跑本地 AI
+- ASR 从 Whisper Tiny 升级为 multilingual Whisper Base
+- 无 WebGPU 时使用 WASM；极端不兼容才回退 Tiny
+- 默认停顿 0.75 秒自动切段
+- 单片段最长约 8 秒，尽早启动识别
+- 麦克风持续录音，上一片段处理时下一片段继续进入队列
+- 原文识别完立即显示，不等待两个译文全部完成
+- 英文作为中间翻译结果时先显示，再补齐第三语言
+- 英语原文时中/西翻译并行
+- 自动测量环境噪声，动态调整 VAD 阈值
+- 完全不使用 OpenAI 或其他付费 API
 
-styles.css 与 manifest.webmanifest 没变化，也可以全部覆盖上传。
+## GitHub 更新
+不需要新建仓库。
+把本压缩包解压后，将根目录里的文件全部拖到原来的 mining-translator 仓库并覆盖，Commit changes。
+等待 GitHub Pages 自动部署 1–3 分钟。
+然后关闭手机旧页面，再重新打开：
+https://d777wq.github.io/mining-translator/
 
-上传并 Commit 后，GitHub Pages 会自动重新发布。
-建议在 iPhone Safari 中关闭旧页面后重新打开网站。
+页面顶部看到 V0.5 即表示更新成功。
+
+## 首次使用
+第一次初始化会下载 Whisper Base，因此比旧 Tiny 下载量更大。
+下载/缓存完成后，后续使用会明显方便。
+
+## 说明
+完全免费、本地手机模型无法保证达到云端商业同传的延迟和准确度。
+本版选择 Whisper Base 是“手机速度与中文准确率”的折中。
