@@ -1,18 +1,21 @@
-# 矿山三语实时翻译助手 V0.4 FREE — 连续会议版
+# 矿山三语实时翻译助手 V0.4.1 FREE — iPhone兼容修正版
 
-## 新功能
-- 点一次“开始连续会议翻译”后持续监听会议
-- 自动检测讲话和停顿
-- 默认停顿约 1.3 秒自动切分为一个片段
-- 每个片段自动 Whisper 识别、自动判断中/西/英语、生成另外两种语言
-- 识别翻译期间麦克风继续监听，片段进入队列处理
-- 最长约 20 秒自动切段，避免一整段会议一次性处理造成卡顿
-- 三语历史记录持续累积
-- 不使用 OpenAI API，不产生 API 费用
+## 修复内容
+- 不再在页面打开时直接导入 Transformers.js。
+- 点击“初始化免费模型”后才动态加载 AI 引擎。
+- iPhone 先只加载 Whisper Tiny；翻译模型按语言需要再下载，降低内存压力。
+- 使用独立缓存版本 V041，避免 Safari/GitHub Pages 一直读取旧 app.js。
+- 初始化失败时会把具体错误直接显示在页面上。
+- 仍然不需要 OpenAI API Key，也没有 API 调用费用。
 
-## 重要说明
-这是“近实时连续翻译”，不是云端 Realtime API 那种逐字毫秒级同传。完全免费本地模型需要用设备自己的 CPU/GPU，所以手机性能越好延迟越低。会议中建议每位讲话者按自然句子稍作停顿。
+## 更新 GitHub
+把本压缩包解压后，将以下文件覆盖上传到原仓库根目录：
+- index.html
+- app.js
+- sw.js
+- README.md
 
-## 使用
-电脑可在目录执行：python -m http.server 8080，然后 Chrome/Edge 打开 http://localhost:8080。
-手机建议部署到 GitHub Pages 等 HTTPS 静态网站后使用。首次必须联网下载模型，之后浏览器会尽量缓存。
+styles.css 与 manifest.webmanifest 没变化，也可以全部覆盖上传。
+
+上传并 Commit 后，GitHub Pages 会自动重新发布。
+建议在 iPhone Safari 中关闭旧页面后重新打开网站。

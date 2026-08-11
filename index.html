@@ -10,7 +10,7 @@
 </head>
 <body>
 <header>
-  <div><h1>矿山三语实时翻译助手</h1><p>全免费本地 AI · 连续会议翻译 · 中文 / Español / English</p></div>
+  <div><h1>矿山三语实时翻译助手</h1><p>全免费本地 AI · 连续会议翻译 · iPhone兼容版 · 中文 / Español / English</p></div>
   <span id="modeBadge">FREE · LOCAL</span>
 </header>
 
@@ -37,8 +37,8 @@
 
 <section class="engine">
   <div>
-    <b id="engineStatus">模型尚未加载</b>
-    <p id="progressText">首次使用需联网下载免费开源模型。以后浏览器会缓存模型。</p>
+    <b id="engineStatus">模型尚未加载（iPhone兼容模式）</b>
+    <p id="progressText">首次使用需联网。先加载语音识别模型，翻译模型在第一次需要时再加载，减少手机内存占用。</p>
     <div class="bar"><span id="bar"></span></div>
   </div>
   <button id="loadModels">⬇️ 初始化免费模型</button>
@@ -88,6 +88,6 @@
 </main>
 
 <div id="toast"></div>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./app.js?v=041"></script>
 </body>
 </html>
