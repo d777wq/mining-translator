@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#101827">
 <title>矿山三语实时翻译助手</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=050">
+<link rel="stylesheet" href="./styles.css?v=051">
 </head>
 <body>
 <header>
   <div>
     <h1>矿山三语实时翻译助手</h1>
-    <p>V0.5 · 手机独立增强版 · 中文 / Español / English</p>
+    <p>V0.5.1 · 手机独立稳定版 · 中文 / Español / English</p>
   </div>
   <span id="modeBadge">FREE · MOBILE</span>
 </header>
@@ -49,7 +49,7 @@
 <section class="engine">
   <div>
     <b id="engineStatus">模型尚未加载</b>
-    <p id="progressText">V0.5 会自动检测手机 WebGPU；支持时使用 Whisper Base，提高中文识别并尽量加速。</p>
+    <p id="progressText">V0.5.1 会先验证 WebGPU 是否真正可用；失败自动回退 CPU/WASM，避免初始化失败。</p>
     <div class="bar"><span id="bar"></span></div>
   </div>
   <button id="loadModels">⚡ 初始化手机增强模型</button>
@@ -100,12 +100,12 @@
 </section>
 
 <section class="tips">
-  <b>V0.5 优化重点</b>
-  <p>优先使用 WebGPU + Whisper Base；停顿约 0.75 秒自动切段；录音与识别翻译并行排队；识别完成后先立即显示原文，再逐步补齐另外两种语言。完全不调用付费 API。</p>
+  <b>V0.5.1 优化重点</b>
+  <p>WebGPU 真检测 + Whisper Base；WebGPU 失败自动切 WASM；Base 再失败才回退 Tiny。停顿约 0.75 秒自动切段，仍然完全不调用付费 API。</p>
 </section>
 </main>
 
 <div id="toast"></div>
-<script type="module" src="./app.js?v=050"></script>
+<script type="module" src="./app.js?v=051"></script>
 </body>
 </html>

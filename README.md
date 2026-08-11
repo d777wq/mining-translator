@@ -1,36 +1,18 @@
-# 矿山三语实时翻译助手 V0.5 FREE — 手机独立增强版
+# V0.5.1 手机独立稳定版
 
-## 本版目标
-优先解决两个问题：
-1. 手机版翻译/识别延迟较大
-2. 中文语音识别不够准确
+修复 V0.5 初始化失败问题：
 
-## 核心变化
-- 自动检测 WebGPU；支持时用 GPU 跑本地 AI
-- ASR 从 Whisper Tiny 升级为 multilingual Whisper Base
-- 无 WebGPU 时使用 WASM；极端不兼容才回退 Tiny
-- 默认停顿 0.75 秒自动切段
-- 单片段最长约 8 秒，尽早启动识别
-- 麦克风持续录音，上一片段处理时下一片段继续进入队列
-- 原文识别完立即显示，不等待两个译文全部完成
-- 英文作为中间翻译结果时先显示，再补齐第三语言
-- 英语原文时中/西翻译并行
-- 自动测量环境噪声，动态调整 VAD 阈值
-- 完全不使用 OpenAI 或其他付费 API
+- 不再仅凭 `navigator.gpu` 判断 WebGPU 可用。
+- 初始化时实际执行 `requestAdapter()` + `requestDevice()`。
+- WebGPU Whisper Base 使用更稳的 per-module dtype：
+  - encoder_model: fp32
+  - decoder_model_merged: q4
+- WebGPU Base 加载失败时自动回退：
+  1. WASM Whisper Base q8
+  2. WASM Whisper Tiny q8
+- 翻译模型固定使用 WASM q8，减少手机 WebGPU 兼容问题。
+- 新缓存版本 v051，避免 Safari 继续使用 V0.5 旧脚本。
 
-## GitHub 更新
-不需要新建仓库。
-把本压缩包解压后，将根目录里的文件全部拖到原来的 mining-translator 仓库并覆盖，Commit changes。
-等待 GitHub Pages 自动部署 1–3 分钟。
-然后关闭手机旧页面，再重新打开：
-https://d777wq.github.io/mining-translator/
-
-页面顶部看到 V0.5 即表示更新成功。
-
-## 首次使用
-第一次初始化会下载 Whisper Base，因此比旧 Tiny 下载量更大。
-下载/缓存完成后，后续使用会明显方便。
-
-## 说明
-完全免费、本地手机模型无法保证达到云端商业同传的延迟和准确度。
-本版选择 Whisper Base 是“手机速度与中文准确率”的折中。
+更新原 GitHub 仓库即可，无需新建：
+将解压后的全部文件拖入 `mining-translator` 根目录覆盖，然后 Commit。
+等待 GitHub Pages 重新部署后关闭旧网页，再打开网站。
