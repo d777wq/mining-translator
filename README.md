@@ -1,18 +1,26 @@
-# V0.5.1 手机独立稳定版
+# 矿山三语实时翻译助手 V0.5.2 FREE — 手机独立单路径版
 
-修复 V0.5 初始化失败问题：
+## 这版专门解决 V0.5.1 的 iPhone 初始化失败
 
-- 不再仅凭 `navigator.gpu` 判断 WebGPU 可用。
-- 初始化时实际执行 `requestAdapter()` + `requestDevice()`。
-- WebGPU Whisper Base 使用更稳的 per-module dtype：
-  - encoder_model: fp32
-  - decoder_model_merged: q4
-- WebGPU Base 加载失败时自动回退：
-  1. WASM Whisper Base q8
-  2. WASM Whisper Tiny q8
-- 翻译模型固定使用 WASM q8，减少手机 WebGPU 兼容问题。
-- 新缓存版本 v051，避免 Safari 继续使用 V0.5 旧脚本。
+旧逻辑：
+Base WebGPU 失败 → Base WASM → Tiny WASM
+这会导致前面失败的模型可能仍占用内存，最后 Tiny 下载到 100% 也创建失败。
 
-更新原 GitHub 仓库即可，无需新建：
-将解压后的全部文件拖入 `mining-translator` 根目录覆盖，然后 Commit。
-等待 GitHub Pages 重新部署后关闭旧网页，再打开网站。
+V0.5.2 改为：
+- 正常高精度模式：只加载 Whisper Base + WebGPU
+- 兼容模式：只加载 Whisper Tiny + WASM
+- 同一页面绝不连续加载多个 ASR 模型
+- 高精度失败时出现“切换兼容模式”按钮
+- 点击按钮后整页刷新，释放旧页面内存，再干净地加载 Tiny
+- 检测微信等内嵌浏览器时，默认直接进入兼容模式
+- 连续识别时会用上一段语言作为下一段 Whisper language hint，提高连续中文的识别稳定性
+
+## 更新 GitHub
+把解压后的全部文件覆盖上传到原 mining-translator 仓库根目录，Commit changes。
+等待 GitHub Pages 自动部署。
+重新打开后顶部应显示 V0.5.2。
+
+## 推荐
+- iPhone 最好使用 Safari
+- 若高精度模式初始化失败，点“切换兼容模式”
+- 兼容模式速度快、占内存低；中文准确率不如 Base，但稳定性更高

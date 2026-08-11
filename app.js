@@ -1,25 +1,25 @@
-// 矿山三语实时翻译助手 V0.5.1
-// 稳定策略：真实检测 WebGPU adapter。
-// WebGPU: Whisper Base + per-module dtype (encoder fp32, decoder q4)
-// fallback 1: WASM Whisper Base q8
-// fallback 2: WASM Whisper Tiny q8
+// 矿山三语实时翻译助手 V0.5.2
+// 单路径策略：一个页面生命周期内只加载一种 ASR 模型。
+// normal: Whisper Base + WebGPU
+// lite:   Whisper Tiny + WASM
+// 如果 normal 失败，不在当前页面继续加载 Tiny，而是提示用户一键刷新进入 lite 模式。
 
-import {
-  pipeline,
-  env
-} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0';
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0';
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const NAMES={zh:'中文',es:'Español',en:'English'};
+const qs=new URLSearchParams(location.search);
+const forcedMode=qs.get('mode'); // lite | fast | null
 
 let ready=false,running=false,stream=null,audioCtx=null,analyser=null,mediaSource=null,vadTimer=null;
 let recorder=null,chunks=[],speechSeen=false,silenceAt=0,segmentStart=0;
 let queue=[],processing=false,asr=null,pipes={},scene='drilling';
 let current={zh:'',es:'',en:'',source:''};
-let computeMode='wasm', asrModel='', noiseFloor=.008, calibrationSamples=[], calibrated=false;
+let runtimeMode='detect', lastLang=null;
+let noiseFloor=.008,calibrationSamples=[],calibrated=false;
 
 const MODELS={
   zh_en:'Xenova/opus-mt-zh-en',
@@ -28,9 +28,8 @@ const MODELS={
   en_es:'Xenova/opus-mt-en-es'
 };
 
-function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3000)}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3200)}
 function setProgress(p,t){$('#bar').style.width=Math.max(0,Math.min(100,p))+'%';if(t)$('#progressText').textContent=t}
-
 function detect(text){
   if(/[\u3400-\u9fff]/.test(text))return'zh';
   const s=' '+text.toLowerCase()+' ';
@@ -40,7 +39,6 @@ function detect(text){
   if(a===b)return/[áéíóúñ¿¡]/i.test(text)?'es':'en';
   return a>b?'es':'en';
 }
-
 function markSource(l){
   ['zh','es','en'].forEach(x=>{
     $(`#card-${x}`).classList.toggle('source',x===l);
@@ -67,8 +65,8 @@ function renderImmediateSource(text,lang){
 }
 function esc(s=''){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function addHistory(){
-  const h=$('#history');if(h.querySelector('.muted'))h.innerHTML='';
-  const d=document.createElement('div');d.className='turn';
+  const h=$('#history'); if(h.querySelector('.muted'))h.innerHTML='';
+  const d=document.createElement('div'); d.className='turn';
   const tm=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   d.innerHTML=`<div class="meta">${tm} · 原文：${NAMES[current.source]}</div>
   <p><b>🇨🇳 中文</b>${esc(current.zh)}</p>
@@ -77,105 +75,128 @@ function addHistory(){
   h.prepend(d);
 }
 
-async function hasUsableWebGPU(){
+function isLikelyInAppBrowser(){
+  const ua=navigator.userAgent||'';
+  return /MicroMessenger|FBAN|FBAV|Instagram|Line\//i.test(ua);
+}
+
+async function hasRealWebGPU(){
   try{
-    if(!navigator.gpu) return false;
-    const adapter = await navigator.gpu.requestAdapter({powerPreference:'high-performance'});
-    if(!adapter) return false;
-    // requestDevice catches browsers that expose navigator.gpu but cannot actually create a device
-    const dev = await adapter.requestDevice();
+    if(!navigator.gpu)return false;
+    const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});
+    if(!adapter)return false;
+    const dev=await adapter.requestDevice();
     dev.destroy?.();
     return true;
   }catch(e){
-    console.warn('WebGPU probe failed:', e);
+    console.warn('WebGPU probe failed',e);
     return false;
   }
 }
 
-async function loadASR(){
-  const webgpuOK = await hasUsableWebGPU();
-  if(webgpuOK){
+function goMode(mode){
+  const url=new URL(location.href);
+  url.searchParams.set('mode',mode);
+  location.replace(url.toString());
+}
+
+async function chooseMode(){
+  if(forcedMode==='lite'){
+    runtimeMode='lite';
+    $('#runModeText').textContent='兼容模式 · Whisper Tiny / WASM';
+    $('#gpuStatus').textContent='兼容模式：不使用 WebGPU';
+    $('#modelStatus').textContent='识别模型：Whisper Tiny';
+    $('#switchFast').classList.remove('hidden');
+    return;
+  }
+  if(forcedMode==='fast'){
+    runtimeMode='fast';
+    $('#runModeText').textContent='高精度模式 · Whisper Base / WebGPU';
+    $('#switchLite').classList.remove('hidden');
+    return;
+  }
+
+  // In-app browsers are much less predictable. Choose lite immediately, no failed Base allocation first.
+  if(isLikelyInAppBrowser()){
+    runtimeMode='lite';
+    $('#runModeText').textContent='内嵌浏览器 · 自动兼容模式';
+    $('#gpuStatus').textContent='检测到内嵌浏览器，直接使用 WASM';
+    $('#modelStatus').textContent='识别模型：Whisper Tiny';
+    $('#switchFast').classList.remove('hidden');
+    return;
+  }
+
+  const gpu=await hasRealWebGPU();
+  if(gpu){
+    runtimeMode='fast';
+    $('#runModeText').textContent='高精度模式 · Whisper Base / WebGPU';
     $('#gpuStatus').textContent='⚡ WebGPU：已验证可用';
-    $('#modelStatus').textContent='识别模型：Whisper Base（GPU）';
-    setProgress(8,'正在加载 Whisper Base · WebGPU 稳定配置…');
+    $('#modelStatus').textContent='识别模型：Whisper Base';
+    $('#switchLite').classList.remove('hidden');
+  }else{
+    runtimeMode='lite';
+    $('#runModeText').textContent='兼容模式 · Whisper Tiny / WASM';
+    $('#gpuStatus').textContent='WebGPU 不可用，直接进入兼容模式';
+    $('#modelStatus').textContent='识别模型：Whisper Tiny';
+    $('#switchFast').classList.remove('hidden');
+  }
+}
+
+async function loadASR(){
+  if(runtimeMode==='fast'){
+    setProgress(8,'正在加载 Whisper Base · WebGPU…');
     try{
-      asrModel='onnx-community/whisper-base';
-      asr=await pipeline('automatic-speech-recognition',asrModel,{
+      asr=await pipeline('automatic-speech-recognition','onnx-community/whisper-base',{
         device:'webgpu',
-        dtype:{
-          encoder_model:'fp32',
-          decoder_model_merged:'q4'
-        },
+        dtype:{encoder_model:'fp32',decoder_model_merged:'q4'},
         progress_callback:x=>{
           if(x?.status==='progress'){
-            setProgress(8+Math.min(88,(x.progress||0)*.88),`Whisper Base GPU：${Math.round(x.progress||0)}% · ${x.file||''}`);
+            setProgress(8+Math.min(88,(x.progress||0)*.88),`Whisper Base：${Math.round(x.progress||0)}% · ${x.file||''}`);
           }
         }
       });
-      computeMode='webgpu';
       return;
     }catch(e){
-      console.warn('Whisper Base WebGPU failed; fallback to WASM',e);
-      $('#gpuStatus').textContent='⚠️ WebGPU模型加载失败，自动切 CPU/WASM';
-      setProgress(12,'GPU 模型加载失败，正在自动切换 CPU/WASM Base…');
+      console.error('Fast mode failed',e);
+      // Critical: do NOT load any other model in this page.
+      $('#engineStatus').textContent='❌ 高精度模式初始化失败';
+      setProgress(0,'未继续加载第二个模型，以避免 iPhone 内存叠加。请点“切换兼容模式”，页面会刷新后重新加载。');
+      $('#switchLite').classList.remove('hidden');
+      throw new Error('高精度模式失败，请切换兼容模式');
     }
-  }else{
-    $('#gpuStatus').textContent='ℹ️ WebGPU 不可用，自动使用 CPU/WASM';
   }
 
-  // Base on WASM q8
-  try{
-    asrModel='onnx-community/whisper-base';
-    $('#modelStatus').textContent='识别模型：Whisper Base（CPU/WASM）';
-    asr=await pipeline('automatic-speech-recognition',asrModel,{
-      device:'wasm',
-      dtype:'q8',
-      progress_callback:x=>{
-        if(x?.status==='progress'){
-          setProgress(12+Math.min(84,(x.progress||0)*.84),`Whisper Base CPU：${Math.round(x.progress||0)}% · ${x.file||''}`);
-        }
-      }
-    });
-    computeMode='wasm';
-    return;
-  }catch(e){
-    console.warn('Whisper Base WASM failed; fallback Tiny',e);
-    setProgress(18,'Base 仍无法加载，正在切换兼容 Tiny…');
-  }
-
-  // final fallback
-  asrModel='onnx-community/whisper-tiny';
-  $('#modelStatus').textContent='识别模型：Whisper Tiny（兼容模式）';
-  asr=await pipeline('automatic-speech-recognition',asrModel,{
+  setProgress(10,'正在加载 Whisper Tiny · WASM 兼容模式…');
+  asr=await pipeline('automatic-speech-recognition','onnx-community/whisper-tiny',{
     device:'wasm',
     dtype:'q8',
     progress_callback:x=>{
       if(x?.status==='progress'){
-        setProgress(18+Math.min(78,(x.progress||0)*.78),`Whisper Tiny：${Math.round(x.progress||0)}%`);
+        setProgress(10+Math.min(86,(x.progress||0)*.86),`Whisper Tiny：${Math.round(x.progress||0)}% · ${x.file||''}`);
       }
     }
   });
-  computeMode='wasm';
 }
 
 async function init(){
   if(ready)return toast('模型已经初始化完成');
   const btn=$('#loadModels');btn.disabled=true;
-  $('#engineStatus').textContent='正在启动 V0.5.1 稳定模式…';
+  $('#engineStatus').textContent='正在初始化…';
   try{
     await loadASR();
     ready=true;
-    setProgress(100,'✅ 语音识别模型已就绪；翻译模型第一次使用时再缓存。');
-    $('#engineStatus').textContent=`✅ 已就绪 · ${computeMode==='webgpu'?'WebGPU':'CPU/WASM'}`;
-    $('#talk').disabled=false;
-    btn.textContent='✅ 已初始化';
+    setProgress(100,'✅ 语音识别模型已就绪；翻译模型第一次使用时再加载。');
+    $('#engineStatus').textContent=`✅ 已就绪 · ${runtimeMode==='fast'?'高精度 WebGPU':'兼容 WASM'}`;
+    $('#talk').disabled=false;btn.textContent='✅ 已初始化';
     toast('初始化成功');
   }catch(e){
     console.error(e);
-    $('#engineStatus').textContent='❌ 初始化失败';
-    setProgress(0,'错误：'+(e?.message||e));
     btn.disabled=false;
-    toast('初始化失败，请截图错误文字给我');
+    if(runtimeMode==='lite'){
+      $('#engineStatus').textContent='❌ 兼容模式初始化失败';
+      setProgress(0,'兼容模式也失败。建议用 Safari 打开，并关闭其他占内存较大的应用后重试。');
+    }
+    toast(e.message||'初始化失败');
   }
 }
 
@@ -185,7 +206,7 @@ async function getPipe(key){
   const label=labels[key];
   $('#engineStatus').textContent=`首次加载 ${label} 翻译模型…`;
 
-  // 翻译模型优先用 WASM：小 Marian 模型在手机上更稳，避免再触发 WebGPU 兼容问题
+  // Always WASM for translation: stable and independent from ASR GPU path
   const p=await pipeline('translation',MODELS[key],{
     device:'wasm',
     dtype:'q8',
@@ -194,7 +215,7 @@ async function getPipe(key){
     }
   });
   pipes[key]=p;
-  $('#engineStatus').textContent=`✅ 本地模型运行中 · ${computeMode==='webgpu'?'GPU识别':'CPU识别'}`;
+  $('#engineStatus').textContent=`✅ 本地模型运行中 · ${runtimeMode==='fast'?'GPU识别':'兼容识别'}`;
   setProgress(100,`${label} 已缓存`);
   return p;
 }
@@ -207,7 +228,9 @@ async function tr(key,text){
 
 async function translateAll(text){
   const lang=detect(text);
+  lastLang=lang;
   renderImmediateSource(text,lang);
+
   if(lang==='zh'){
     current.en=await tr('zh_en',text);render();
     current.es=await tr('en_es',current.en);render();
@@ -264,9 +287,7 @@ async function startMeeting(){
     newRecorder();vadTimer=setInterval(vadTick,80);
     $('#talk').classList.add('listening');$('#talk').textContent='■ 结束连续翻译';
     $('#micStatus').textContent='🎙 正在校准环境噪声…';
-  }catch(e){
-    console.error(e);toast('麦克风启动失败：'+(e?.message||e));
-  }
+  }catch(e){console.error(e);toast('麦克风启动失败：'+(e?.message||e))}
 }
 
 function vadTick(){
@@ -321,17 +342,25 @@ async function drain(){
       $('#micStatus').textContent=`🧠 正在识别… 队列 ${queue.length}`;
       const ab=await blob.arrayBuffer();
       const audio=await decodeAudio(ab);
-      const out=await asr(audio,{
+
+      const opts={
         task:'transcribe',
         chunk_length_s:8,
         stride_length_s:1,
         return_timestamps:false
-      });
+      };
+
+      // Small accuracy boost for consecutive same-language speech:
+      // after first recognized segment, hint the next segment with previous language.
+      // If the speaker changes, next result's script/words will update lastLang again.
+      if(lastLang==='zh') opts.language='zh';
+      else if(lastLang==='es') opts.language='es';
+      else if(lastLang==='en') opts.language='en';
+
+      const out=await asr(audio,opts);
       const text=(out?.text||'').trim();
       if(text)await translateAll(text);
-    }catch(e){
-      console.error(e);toast('本段识别失败，继续监听');
-    }
+    }catch(e){console.error(e);toast('本段识别失败，继续监听')}
   }
   processing=false;
   $('#micStatus').textContent=running?'🎙 连续监听中…':'🎙 已停止';
@@ -348,12 +377,12 @@ async function decodeAudio(ab){
 
 $$('.scene').forEach(b=>b.onclick=()=>{
   $$('.scene').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');
-  scene=b.dataset.scene;
-  $('#sceneText').textContent='场景：'+b.textContent;
+  b.classList.add('active');scene=b.dataset.scene;$('#sceneText').textContent='场景：'+b.textContent;
 });
 $('#loadModels').onclick=init;
 $('#talk').onclick=startMeeting;
+$('#switchLite').onclick=()=>goMode('lite');
+$('#switchFast').onclick=()=>goMode('fast');
 $('#translateText').onclick=()=>$('#textPanel').classList.toggle('hidden');
 $('#runText').onclick=async()=>{
   const t=$('#manualText').value.trim();if(!t)return;
@@ -387,6 +416,8 @@ window.addEventListener('unhandledrejection',e=>{
   }
 });
 
+await chooseMode();
+
 if('serviceWorker'in navigator){
-  navigator.serviceWorker.register('./sw.js?v=051').then(r=>r.update().catch(()=>{})).catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=052').then(r=>r.update().catch(()=>{})).catch(()=>{});
 }

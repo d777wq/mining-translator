@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#101827">
 <title>矿山三语实时翻译助手</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=051">
+<link rel="stylesheet" href="./styles.css?v=052">
 </head>
 <body>
 <header>
   <div>
     <h1>矿山三语实时翻译助手</h1>
-    <p>V0.5.1 · 手机独立稳定版 · 中文 / Español / English</p>
+    <p>V0.5.2 · 手机独立单路径版 · 中文 / Español / English</p>
   </div>
   <span id="modeBadge">FREE · MOBILE</span>
 </header>
@@ -49,7 +49,7 @@
 <section class="engine">
   <div>
     <b id="engineStatus">模型尚未加载</b>
-    <p id="progressText">V0.5.1 会先验证 WebGPU 是否真正可用；失败自动回退 CPU/WASM，避免初始化失败。</p>
+    <p id="progressText">V0.5.2 只加载一种识别模型：Safari/WebGPU 用 Whisper Base；不兼容时一键刷新进入轻量兼容模式，避免内存叠加导致初始化失败。</p>
     <div class="bar"><span id="bar"></span></div>
   </div>
   <button id="loadModels">⚡ 初始化手机增强模型</button>
@@ -58,6 +58,14 @@
 <section class="deviceInfo">
   <span id="gpuStatus">检测硬件加速中…</span>
   <span id="modelStatus">识别模型：待定</span>
+</section>
+<section class="modePanel">
+  <div>
+    <b>运行模式</b>
+    <span id="runModeText">自动选择</span>
+  </div>
+  <button id="switchLite" class="secondary hidden">切换兼容模式</button>
+  <button id="switchFast" class="secondary hidden">切换高精度模式</button>
 </section>
 
 <section class="liveStatus">
@@ -100,12 +108,12 @@
 </section>
 
 <section class="tips">
-  <b>V0.5.1 优化重点</b>
-  <p>WebGPU 真检测 + Whisper Base；WebGPU 失败自动切 WASM；Base 再失败才回退 Tiny。停顿约 0.75 秒自动切段，仍然完全不调用付费 API。</p>
+  <b>V0.5.2 优化重点</b>
+  <p>单路径加载：高精度模式只加载 Whisper Base GPU；兼容模式只加载 Whisper Tiny WASM。两种模式绝不在同一页面连续加载，降低 iPhone 内存压力。</p>
 </section>
 </main>
 
 <div id="toast"></div>
-<script type="module" src="./app.js?v=051"></script>
+<script type="module" src="./app.js?v=052"></script>
 </body>
 </html>
