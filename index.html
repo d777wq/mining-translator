@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>矿山三语实时翻译助手</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header>
+  <div><h1>矿山三语实时翻译助手</h1><p>全免费本地 AI · 连续会议翻译 · 中文 / Español / English</p></div>
+  <span id="modeBadge">FREE · LOCAL</span>
+</header>
+
+<main>
+<section class="toolbar">
+  <div class="sceneRow">
+    <button class="scene active" data-scene="drilling">地质钻探</button>
+    <button class="scene" data-scene="safety">安全环保</button>
+    <button class="scene" data-scene="warehouse">仓储采购</button>
+    <button class="scene" data-scene="maintenance">设备维修</button>
+    <button class="scene" data-scene="general">通用</button>
+  </div>
+  <div class="selects">
+    <label>🔊 朗读
+      <select id="speakLang">
+        <option value="es">Español</option>
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="off">关闭</option>
+      </select>
+    </label>
+  </div>
+</section>
+
+<section class="engine">
+  <div>
+    <b id="engineStatus">模型尚未加载</b>
+    <p id="progressText">首次使用需联网下载免费开源模型。以后浏览器会缓存模型。</p>
+    <div class="bar"><span id="bar"></span></div>
+  </div>
+  <button id="loadModels">⬇️ 初始化免费模型</button>
+</section>
+
+<section class="liveStatus">
+  <span id="micStatus">🎙 等待开始</span>
+  <span id="sceneText">场景：地质钻探</span>
+</section>
+
+<section class="columns">
+  <article id="card-zh">
+    <div class="head"><span>🇨🇳 中文</span><small id="tag-zh">译文</small></div>
+    <div id="zh" class="text">初始化模型后，直接点击“开始对话”。</div>
+  </article>
+  <article id="card-es">
+    <div class="head"><span>🇵🇪 Español</span><small id="tag-es">Traducción</small></div>
+    <div id="es" class="text">Después de cargar los modelos, pulse “Iniciar conversación”.</div>
+  </article>
+  <article id="card-en">
+    <div class="head"><span>🇺🇸 English</span><small id="tag-en">Translation</small></div>
+    <div id="en" class="text">Load the models, then tap “Start conversation”.</div>
+  </article>
+</section>
+
+<section class="actions">
+  <button id="talk" disabled>🎙 开始连续会议翻译</button>
+  <label>停顿分段 <select id="silenceDelay"><option value="900">0.9秒</option><option value="1300" selected>1.3秒</option><option value="1800">1.8秒</option><option value="2500">2.5秒</option></select></label>
+  <button id="translateText">⌨️ 文字测试</button>
+  <button id="clear">清空</button>
+</section>
+
+<section id="textPanel" class="textPanel hidden">
+  <textarea id="manualText" placeholder="输入中文、西班牙语或英语，测试三语翻译……"></textarea>
+  <button id="runText">翻译</button>
+</section>
+
+<section class="history">
+  <div class="sectionHead"><h2>三语对话记录</h2><div><button id="copy">复制全部</button><button id="clearHistory">清空记录</button></div></div>
+  <div id="history"><p class="muted">翻译完成后会保存在这里。</p></div>
+</section>
+
+<section class="tips">
+  <b>免费版说明</b>
+  <p>语音识别和翻译都在你的手机/电脑浏览器中运行，不调用 OpenAI 或其他付费 API。会议模式开始后持续监听；检测到一小段停顿就自动分段、识别、翻译并继续监听，不需要每句话手动操作。</p>
+</section>
+</main>
+
+<div id="toast"></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

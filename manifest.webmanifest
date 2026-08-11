@@ -1,0 +1,10 @@
+{
+  "name": "矿山三语实时翻译助手",
+  "short_name": "矿山三语翻译",
+  "description": "全免费本地中英西三语矿山翻译助手",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#eef1f5",
+  "theme_color": "#101827",
+  "lang": "zh-CN"
+}
